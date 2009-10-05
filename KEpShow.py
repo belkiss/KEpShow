@@ -1,11 +1,14 @@
 # -*- coding: utf-8 -*-
 # File : KEpShow.py
-import datetime,os,re,string,sys,time,urllib2
+import datetime,locale,os,re,string,sys,time,urllib2
 from PyQt4 import QtCore, QtGui
 
 from ui_KEpShow import Ui_MainQWidget
 
+today = datetime.datetime.now().strftime("%d/%m/%Y")
+
 def parsePage(view, page, dirpath):
+	locale.setlocale(locale.LC_ALL, 'en_US')
 	url  = "http://epguides.com/"
 	url += str(page)
 	request = urllib2.Request(url)
@@ -41,9 +44,15 @@ def parsePage(view, page, dirpath):
 						dir_content.remove(mkv)
 						found = True
 						#print mkv + " " + str_cat + " " + str(string.find(mkv, str_cat))
+
+				diffusion_date = datetime.datetime(*diffusion_date[0:7]).strftime("%d/%m/%Y")
+				check = datetime.datetime.strptime(diffusion_date,"%d/%m/%Y") - datetime.datetime.strptime(today,"%d/%m/%Y")
+				color = "#86FF68"
+				if check.days > 0:
+					color = "#8BB2FF"
 				addRoot(model, found)
 				addLine(model, 0, str_cat)
-				addLine(model, 1, datetime.datetime(*diffusion_date[0:7]).strftime("%d/%m/%Y"))
+				addLine(model, 1, diffusion_date, color)
 
 	model.sort(0)
 	view.setModel(model)
@@ -79,20 +88,22 @@ class KEpShow(QtGui.QWidget):
 def addRoot(model, name):
 	model.insertRow(0)
 	if name == False:
-		colorCode = "#FF6767"
+		colorCode = "#FF6767" #red
 	else:
-		colorCode = "#8BB2FF"
+		#colorCode = "#8BB2FF" #blue
+		colorCode = "#86FF68" #green
 	model.setData(model.index(0, 0), QtGui.QColor(colorCode), QtCore.Qt.BackgroundColorRole)
 	model.setData(model.index(0, 1), QtGui.QColor(colorCode), QtCore.Qt.BackgroundColorRole)
 	model.setData(model.index(0, 2), QtGui.QColor(colorCode), QtCore.Qt.BackgroundColorRole)
 	#model.setData(model.index(0, 0), QtCore.QVariant(name))
 
-def addLine(model, ix, name):
+def addLine(model, ix, name, colorCode = ""):
+	if len(colorCode) > 0:
+		model.setData(model.index(0, ix), QtGui.QColor(colorCode), QtCore.Qt.BackgroundColorRole)
 	model.setData(model.index(0, ix), QtCore.QVariant(name))
 
 
 #if __name__ == "__main__":
-
 app = QtGui.QApplication(sys.argv)
 kepshow = KEpShow()
 
