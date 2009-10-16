@@ -6,10 +6,15 @@ from PyQt4 import QtCore, QtGui
 
 from ui_KEpShow import Ui_MainQWidget
 
+xmlFileName = "KEpShow_dirs.xml"
+directoriesToParse = []
+
 today = datetime.datetime.now().strftime("%d/%m/%Y")
 
 showSeenTo = {}
 
+################################################################################
+################################################################################
 def parsePage(view, page, dirpath):
 	locale.setlocale(locale.LC_ALL, 'en_US')
 	url  = "http://epguides.com/"
@@ -82,21 +87,23 @@ def parsePage(view, page, dirpath):
 					else:
 						addLine(model, 2, fileName)#color)
 
-
 	model.sort(0)
 	view.setModel(model)
 
+
+################################################################################
+################################################################################
 class KEpShow(QtGui.QWidget):
 	def updateActions(self, rank):
-		ix = self.ui.found_tv_shows.model().index(rank, 1)
+		ix           = self.ui.found_tv_shows.model().index(rank, 1)
 		currentDispl = self.ui.found_tv_shows.model().data(ix).toString()
-		ix_dir = self.ui.found_tv_shows.model().index(rank, 2)
-		currentDir = self.ui.found_tv_shows.model().data(ix_dir).toString()
+		ix_dir       = self.ui.found_tv_shows.model().index(rank, 2)
+		currentDir   = self.ui.found_tv_shows.model().data(ix_dir).toString()
 		parsePage(kepshow.ui.tableView, currentDispl, currentDir)
 		#print self.ui.found_tv_shows.model().data(ix).toString()
 
 	def updateAll(self, rank):
-		ix = self.ui.all_tv_shows.model().index(rank, 1)
+		ix           = self.ui.all_tv_shows.model().index(rank, 1)
 		currentDispl = self.ui.all_tv_shows.model().data(ix).toString()
 		parsePage(kepshow.ui.tableView, currentDispl)
 		#print self.ui.found_tv_shows.model().data(ix).toString()
@@ -113,6 +120,47 @@ class KEpShow(QtGui.QWidget):
 		self.connect(self.ui.found_tv_shows, QtCore.SIGNAL("currentIndexChanged(int)"), self.updateActions)
 		#self.connect(self.ui.all_tv_shows, QtCore.SIGNAL("currentIndexChanged(int)"), self.updateAll)
 
+
+    ############################################################################
+	# XML TOOLS
+	def readDirectoriesFromXML(self):
+		xmlFile = QtCore.QFile(xmlFileName)
+		xmlFile.open(QtCore.QIODevice.ReadOnly)
+		xmlReader = QtCore.QXmlStreamReader(xmlFile)
+		while not xmlReader.atEnd():
+			xmlReader.readNext()
+			if xmlReader.isStartElement():
+				if xmlReader.name() == "dir":
+					directoriesToParse.append(xmlReader.readElementText())
+
+	def writeDirectoriesToXML(self):
+		xmlFile = QtCore.QFile(xmlFileName)
+		xmlFile.open(QtCore.QIODevice.WriteOnly)
+		xmlWriter = QtCore.QXmlStreamWriter(xmlFile)
+		xmlWriter.setAutoFormatting(True)
+		xmlWriter.writeStartDocument()
+		################################################
+		for directory in directoriesToParse:
+			xmlWriter.writeStartElement("directories")
+			xmlWriter.writeTextElement("dir", directory)
+			xmlWriter.writeEndElement()
+		################################################
+		xmlWriter.writeEndDocument()
+    ############################################################################
+
+	def chooseDirectory(self):
+		directoryFullPath = QtGui.QFileDialog.getExistingDirectory(self,
+								self.tr("Choose a directory"),
+								QtCore.QDir.currentPath(),
+								QtGui.QFileDialog.DontResolveSymlinks | QtGui.QFileDialog.ShowDirsOnly
+							)
+		if not directoryFullPath.isEmpty():
+			directoriesToParse.append(directoryFullPath)
+			self.writeDirectoriesToXML()
+
+
+################################################################################
+################################################################################
 def addRoot(model, name):
 	model.insertRow(0)
 	if name == False:
@@ -126,11 +174,17 @@ def addRoot(model, name):
 	model.setData(model.index(0, 3), QtGui.QColor(colorCode), QtCore.Qt.BackgroundColorRole)
 	#model.setData(model.index(0, 0), QtCore.QVariant(name))
 
+
+################################################################################
+################################################################################
 def addLine(model, ix, name, colorCode = ""):
 	if len(colorCode) > 0:
 		model.setData(model.index(0, ix), QtGui.QColor(colorCode), QtCore.Qt.BackgroundColorRole)
 	model.setData(model.index(0, ix), QtCore.QVariant(name))
 
+
+################################################################################
+################################################################################
 def parseLastShows():
 	path = "/home/belkiss/download/Series"
 	lastShowsFilePath = os.path.join(path, "lastShows")
@@ -147,10 +201,16 @@ def parseLastShows():
 				#print ":" + string.lower(show_name) + ":"
 				showSeenTo[string.lower(show_name)] = split_line.group(1) + "e" + split_line.group(2)
 
+
+################################################################################
+################################################################################
 #if __name__ == "__main__":
 app = QtGui.QApplication(sys.argv)
 parseLastShows()
 kepshow = KEpShow()
+#kepshow.readDirectoriesFromXML()
+#kepshow.chooseDirectory()
+#kepshow.readDirectoriesFromXML()
 
 all_list = open("/home/belkiss/Desktop/current.shtml", 'r')
 found_first = 0
@@ -192,7 +252,7 @@ for element in os.listdir("/home/belkiss/download/Series"):
 					if lowerUpper[string.lower(child_element)] != child_element :
 						print "rename this " + child_element + " to this : " + lowerUpper[string.lower(child_element)]
 					addRoot(model_found_shows, dirNames[lowerUpper[string.lower(child_element)]])
-					addLine(model_found_shows, 0, dirNames[lowerUpper[string.lower(child_element)]])
+					addLine(model_found_shows, 0, str(dirNames[lowerUpper[string.lower(child_element)]]) + str(" in ") + str(element))
 					addLine(model_found_shows, 1, lowerUpper[string.lower(child_element)])
 					if child_element in diir:
 						print child_element + "already inside"
@@ -202,6 +262,7 @@ for element in os.listdir("/home/belkiss/download/Series"):
 				else:
 					print "#######not found" + child_element
 model_found_shows.sort(0)
+
 kepshow.ui.found_tv_shows.setModel(model_found_shows)
 kepshow.show()
 sys.exit(app.exec_())
