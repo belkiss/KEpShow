@@ -140,10 +140,10 @@ class KEpShow(QtGui.QWidget):
 		xmlWriter.setAutoFormatting(True)
 		xmlWriter.writeStartDocument()
 		################################################
+		xmlWriter.writeStartElement("directories")
 		for directory in directoriesToParse:
-			xmlWriter.writeStartElement("directories")
 			xmlWriter.writeTextElement("dir", directory)
-			xmlWriter.writeEndElement()
+		xmlWriter.writeEndElement()
 		################################################
 		xmlWriter.writeEndDocument()
     ############################################################################
@@ -208,7 +208,7 @@ def parseLastShows():
 app = QtGui.QApplication(sys.argv)
 parseLastShows()
 kepshow = KEpShow()
-#kepshow.readDirectoriesFromXML()
+kepshow.readDirectoriesFromXML()
 #kepshow.chooseDirectory()
 #kepshow.readDirectoriesFromXML()
 
@@ -242,25 +242,29 @@ kepshow.ui.all_tv_shows.setModel(model_all_shows)
 
 diir = []
 model_found_shows = QtGui.QStandardItemModel(0, 3)
-for element in os.listdir("/home/belkiss/download/Series"):
-	if os.path.isdir(os.path.join("/home/belkiss/download/Series", element)):
-		# AIROUT ONAIR TOWATCH
-		for child_element in os.listdir(os.path.join("/home/belkiss/download/Series", element)):
-			if os.path.isdir(os.path.join("/home/belkiss/download/Series/"+element, child_element)):
-				#print child_element
-				if string.lower(child_element) in lowerUpper:
-					if lowerUpper[string.lower(child_element)] != child_element :
-						print "rename this " + child_element + " to this : " + lowerUpper[string.lower(child_element)]
-					addRoot(model_found_shows, dirNames[lowerUpper[string.lower(child_element)]])
-					addLine(model_found_shows, 0, str(dirNames[lowerUpper[string.lower(child_element)]]) + str(" in ") + str(element))
-					addLine(model_found_shows, 1, lowerUpper[string.lower(child_element)])
-					if child_element in diir:
-						print child_element + "already inside"
+for directory in directoriesToParse:
+	directory = str(directory)
+	print "parsing " + directory
+	for element in os.listdir(directory):
+		if os.path.isdir(os.path.join(directory, element)):
+			# AIROUT ONAIR TOWATCH
+			for child_element in os.listdir(os.path.join(directory, element)):
+				if os.path.isdir(os.path.join(os.path.join(directory, element), child_element)):
+					#print child_element
+					if string.lower(child_element) in lowerUpper:
+						if lowerUpper[string.lower(child_element)] != child_element :
+							print "    rename this " + child_element + " to this : " + lowerUpper[string.lower(child_element)]
+						addRoot(model_found_shows, dirNames[lowerUpper[string.lower(child_element)]])
+						addLine(model_found_shows, 0, str(dirNames[lowerUpper[string.lower(child_element)]]) + str(" in ") + str(element))
+						addLine(model_found_shows, 1, lowerUpper[string.lower(child_element)])
+						if child_element in diir:
+							print "    " + child_element + " already inside"
+							# CHANGE THE BEHAVIOUR : whehn already inside, complete the data
+						else:
+							diir.append(child_element)
+						addLine(model_found_shows, 2, os.path.join(os.path.join(directory, element), child_element))
 					else:
-						diir.append(child_element)
-					addLine(model_found_shows, 2, os.path.join("/home/belkiss/download/Series/"+element, child_element))
-				else:
-					print "#######not found" + child_element
+						print "    ####### not found : " + child_element
 model_found_shows.sort(0)
 
 kepshow.ui.found_tv_shows.setModel(model_found_shows)
