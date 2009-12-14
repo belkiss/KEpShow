@@ -53,9 +53,6 @@
          </property>
         </widget>
        </item>
-       <item row="1" column="1">
-        <widget class="QComboBox" name="found_tv_shows"/>
-       </item>
        <item row="2" column="1">
         <widget class="QTableView" name="tableView">
          <property name="frameShape">
@@ -80,6 +77,9 @@
           <bool>false</bool>
          </attribute>
         </widget>
+       </item>
+       <item row="2" column="0">
+        <widget class="QListView" name="found_tv_shows"/>
        </item>
       </layout>
      </item>

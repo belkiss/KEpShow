@@ -61,6 +61,7 @@ def parsePage(view, page, dirpath):
 							if episode_nb <= int(split_ep.group(2)):
 								found = True
 
+				# replace 720p by a space to avoid detecting it as an episode number
 				for mkv in dir_content:
 					if string.find(string.lower(string.replace(mkv, "720p", "", 1)), str_cat) != -1:
 						dir_content.remove(mkv)
@@ -94,10 +95,10 @@ def parsePage(view, page, dirpath):
 ################################################################################
 ################################################################################
 class KEpShow(QtGui.QWidget):
-	def updateActions(self, rank):
-		ix           = self.ui.found_tv_shows.model().index(rank, 1)
+	def updateActions(self, inIndex):
+		ix           = self.ui.found_tv_shows.model().index(inIndex.row(), 1)
 		currentDispl = self.ui.found_tv_shows.model().data(ix).toString()
-		ix_dir       = self.ui.found_tv_shows.model().index(rank, 2)
+		ix_dir       = self.ui.found_tv_shows.model().index(inIndex.row(), 2)
 		currentDir   = self.ui.found_tv_shows.model().data(ix_dir).toString()
 		parsePage(kepshow.ui.tableView, currentDispl, currentDir)
 		#print self.ui.found_tv_shows.model().data(ix).toString()
@@ -117,7 +118,7 @@ class KEpShow(QtGui.QWidget):
 
 		self.ui.tableView.setAlternatingRowColors(True)
 
-		self.connect(self.ui.found_tv_shows, QtCore.SIGNAL("currentIndexChanged(int)"), self.updateActions)
+		self.connect(self.ui.found_tv_shows, QtCore.SIGNAL("clicked(QModelIndex)"), self.updateActions)
 		#self.connect(self.ui.all_tv_shows, QtCore.SIGNAL("currentIndexChanged(int)"), self.updateAll)
 
 
