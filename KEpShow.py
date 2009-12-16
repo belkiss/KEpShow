@@ -2,7 +2,7 @@
 # pyuic4 -o ui_KEpShow.py KEpShow.ui
 # File : KEpShow.py
 import datetime,locale,os,re,string,sys,time,urllib2
-from PyQt4 import QtCore, QtGui
+from PyQt4 import QtCore, QtGui, QtNetwork
 
 from ui_KEpShow import Ui_MainQWidget
 
@@ -34,7 +34,7 @@ def parsePage(view, page, dirpath):
 			for child_files in os.listdir(dirpath + "/" + files):
 				if os.path.isfile(os.path.join(str(dirpath + "/" + files), child_files)):
 					dir_content.append(child_files)
-	
+
 	for line in webpage:
 		if found_first == 0:
 			if line[0:17] == '<div id="eplist">':
@@ -94,6 +94,39 @@ def parsePage(view, page, dirpath):
 
 ################################################################################
 ################################################################################
+def getSquarePicsFromTVShow( showName ):
+
+	if QtCore.QFile.exists(".thumbs/" + showName):
+		image = QtGui.QImage()
+		image.load(showName)
+		return image
+	else:
+		url  = "http://mediaicons.org/Services/Find.ashx?term="
+		url += str(showName) + "&format=1"
+		request = urllib2.Request(url)
+		webpage = urllib2.urlopen(request).read()
+
+		xmlReader = QtCore.QXmlStreamReader(webpage)
+
+		while not xmlReader.atEnd():
+			xmlReader.readNext()
+			if xmlReader.isStartElement():
+				if xmlReader.name() == "icon":
+					iconURL = xmlReader.attributes().value("url").toString()
+					string.replace(iconURL, "mediaicons.org/GetIcon", "mediaicons.org/Services/GetIcon", 1)
+					print iconURL
+					pic = urllib2.urlopen(str(iconURL)).read()
+					imag = QtGui.QImage()
+					imag.loadFromData(pic)
+					print "success ?"
+					print imag.save(".thumbs/" + showName, "PNG")
+					return imag
+		if xmlReader.atEnd():
+			return ""
+
+
+################################################################################
+################################################################################
 class KEpShow(QtGui.QWidget):
 	def updateActions(self, inIndex):
 		ix           = self.ui.found_tv_shows.model().index(inIndex.row(), 1)
@@ -101,6 +134,10 @@ class KEpShow(QtGui.QWidget):
 		ix_dir       = self.ui.found_tv_shows.model().index(inIndex.row(), 2)
 		currentDir   = self.ui.found_tv_shows.model().data(ix_dir).toString()
 		parsePage(kepshow.ui.tableView, currentDispl, currentDir)
+		image = getSquarePicsFromTVShow(currentDispl)
+
+		if image:
+			self.ui.found_tv_shows.model().setData(self.ui.found_tv_shows.model().index(inIndex.row(), 3), QtGui.QPixmap.fromImage(image.scaled(64, 64, QtCore.Qt.KeepAspectRatio)), QtCore.Qt.DecorationRole)
 		#print self.ui.found_tv_shows.model().data(ix).toString()
 
 	def updateAll(self, rank):
@@ -122,7 +159,7 @@ class KEpShow(QtGui.QWidget):
 		#self.connect(self.ui.all_tv_shows, QtCore.SIGNAL("currentIndexChanged(int)"), self.updateAll)
 
 
-    ############################################################################
+	########################################################################
 	# XML TOOLS
 	def readDirectoriesFromXML(self):
 		xmlFile = QtCore.QFile(xmlFileName)
@@ -147,7 +184,7 @@ class KEpShow(QtGui.QWidget):
 		xmlWriter.writeEndElement()
 		################################################
 		xmlWriter.writeEndDocument()
-    ############################################################################
+	########################################################################
 
 	def chooseDirectory(self):
 		directoryFullPath = QtGui.QFileDialog.getExistingDirectory(self,
@@ -242,7 +279,7 @@ kepshow.ui.all_tv_shows.setModel(model_all_shows)
 
 
 diir = []
-model_found_shows = QtGui.QStandardItemModel(0, 3)
+model_found_shows = QtGui.QStandardItemModel(0, 4)
 for directory in directoriesToParse:
 	directory = str(directory)
 	print "parsing " + directory
@@ -269,5 +306,13 @@ for directory in directoriesToParse:
 model_found_shows.sort(0)
 
 kepshow.ui.found_tv_shows.setModel(model_found_shows)
+
+nrows = model_found_shows.rowCount()
+print nrows
+for row in xrange(nrows):
+	kepshow.ui.found_tv_shows.setRowHeight(row,64)
+
+kepshow.ui.found_tv_shows.hideColumn(1)
+kepshow.ui.found_tv_shows.hideColumn(2)
 kepshow.show()
 sys.exit(app.exec_())
