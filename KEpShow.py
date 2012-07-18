@@ -22,7 +22,7 @@ SHOW_SEEN_TO = {}
 ################################################################################
 def parse_page(view, page, dirpath):
     """ Parse epguides webpage """
-    locale.setlocale(locale.LC_ALL, 'en_US')
+    locale.setlocale(locale.LC_ALL, 'C')
     url  = "http://epguides.com/"
     url += str(page)
     request = urllib.request.Request(url)
