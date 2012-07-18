@@ -383,7 +383,7 @@ if __name__ == "__main__":
     #KEPSHOW.directory_selector()
     #KEPSHOW.read_dirs_from_xml()
 
-    ALL_SHOW_FILE_DATA = open("/home/belkiss/Desktop/current.shtml", 'r', -1, 'ISO-8859-1')
+    ALL_SHOW_FILE_DATA = open("current.shtml", 'r', -1, 'ISO-8859-1')
     FOUND_DATA_BEGINNING = 0
     DIR_NAMES = {}
     SHOWNAME_LOWER_TO_UPPER = {}
