@@ -44,7 +44,7 @@ def parse_page(view, page, dirpath):
                     dir_content.append(child_files)
 
     for line in webpage:
-        line = line.decode('UTF-8')
+        line = line.decode("ISO-8859-1") # 'UTF-8'
         if found_first == 0:
             if line[0:17] == '<div id="eplist">':
                 found_first += 1
