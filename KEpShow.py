@@ -332,14 +332,14 @@ def add_root_node(model, name, color):
         color_code = "#8BB2FF" #blue
     else:
         color_code = "#FFFFFF"
-    model.setData(model.index(0, 0), QtGui.QColor(color_code),
-                  QtCore.Qt.BackgroundColorRole)
-    model.setData(model.index(0, 1), QtGui.QColor(color_code),
-                  QtCore.Qt.BackgroundColorRole)
-    model.setData(model.index(0, 2), QtGui.QColor(color_code),
-                  QtCore.Qt.BackgroundColorRole)
-    model.setData(model.index(0, 3), QtGui.QColor(color_code),
-                  QtCore.Qt.BackgroundColorRole)
+    model.setData(model.index(0, 0), QtGui.QColor("#000000"), QtCore.Qt.ForegroundRole)
+    model.setData(model.index(0, 1), QtGui.QColor("#000000"), QtCore.Qt.ForegroundRole)
+    model.setData(model.index(0, 2), QtGui.QColor("#000000"), QtCore.Qt.ForegroundRole)
+    model.setData(model.index(0, 3), QtGui.QColor("#000000"), QtCore.Qt.ForegroundRole)
+    model.setData(model.index(0, 0), QtGui.QColor(color_code), QtCore.Qt.BackgroundColorRole)
+    model.setData(model.index(0, 1), QtGui.QColor(color_code), QtCore.Qt.BackgroundColorRole)
+    model.setData(model.index(0, 2), QtGui.QColor(color_code), QtCore.Qt.BackgroundColorRole)
+    model.setData(model.index(0, 3), QtGui.QColor(color_code), QtCore.Qt.BackgroundColorRole)
     #model.setData(model.index(0, 0), QtCore.QVariant(name))
 
 
@@ -348,8 +348,8 @@ def add_root_node(model, name, color):
 def add_child_node(model, in_index, name, in_color_code = ""):
     """ Add a child element at given level with color """
     if len(in_color_code) > 0:
-        model.setData(model.index(0, in_index), QtGui.QColor(in_color_code),
-                      QtCore.Qt.BackgroundColorRole)
+        model.setData(model.index(0, in_index), QtGui.QColor("#000000"),     QtCore.Qt.ForegroundRole)
+        model.setData(model.index(0, in_index), QtGui.QColor(in_color_code), QtCore.Qt.BackgroundColorRole)
     model.setData(model.index(0, in_index), name)
 
 
