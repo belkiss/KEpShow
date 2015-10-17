@@ -432,6 +432,9 @@ if __name__ == "__main__":
                         if child_element.lower() in SHOWNAME_LOWER_TO_UPPER:
                             if SHOWNAME_LOWER_TO_UPPER[child_element.lower()] != child_element :
                                 print("    rename this " + child_element + " to this : " + SHOWNAME_LOWER_TO_UPPER[child_element.lower()])
+                            #print("child_element.lower() " + child_element.lower())
+                            #print("SHOWNAME_LOWER_TO_UPPER[child_element.lower()] " + SHOWNAME_LOWER_TO_UPPER[child_element.lower()])
+                            #print("DIR_NAMES[SHOWNAME_LOWER_TO_UPPER[child_element.lower()]] " + DIR_NAMES[SHOWNAME_LOWER_TO_UPPER[child_element.lower()]])
                             add_root_node(FOUND_SHOWS_MODEL, DIR_NAMES[SHOWNAME_LOWER_TO_UPPER[child_element.lower()]], element_color)
                             add_child_node(FOUND_SHOWS_MODEL, 0, DIR_NAMES[SHOWNAME_LOWER_TO_UPPER[child_element.lower()]])
                             add_child_node(FOUND_SHOWS_MODEL, 1, SHOWNAME_LOWER_TO_UPPER[child_element.lower()])
@@ -443,6 +446,15 @@ if __name__ == "__main__":
                             add_child_node(FOUND_SHOWS_MODEL, 2, os.path.join(os.path.join(directory, element), child_element))
                         else:
                             print("    ####### not found : " + child_element)
+                            add_root_node(FOUND_SHOWS_MODEL, child_element, element_color)
+                            add_child_node(FOUND_SHOWS_MODEL, 0, child_element)
+                            add_child_node(FOUND_SHOWS_MODEL, 1, child_element)
+                            if child_element in TMP_DIRS:
+                                print("    " + child_element + " already inside")
+                                # CHANGE THE BEHAVIOUR : when already inside, complete the data
+                            else:
+                                TMP_DIRS.append(child_element)
+                            add_child_node(FOUND_SHOWS_MODEL, 2, os.path.join(os.path.join(directory, element), child_element))
     FOUND_SHOWS_MODEL.sort(0)
 
     KEPSHOW.ui.found_tv_shows.setModel(FOUND_SHOWS_MODEL)
