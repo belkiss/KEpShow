@@ -3,7 +3,7 @@
 """ tool to help keeping updated with diffusion date of TV Shows """
 # pyuic4 -o ui_KEpShow.py KEpShow.ui
 # File : KEpShow.py
-import datetime, locale, os, re, sys, time, urllib.request, urllib.error, urllib.parse, warnings
+import datetime, locale, os, re, signal, sys, time, urllib.request, urllib.error, urllib.parse, warnings
 from PyQt4 import QtCore, QtGui
 
 from ui_KEpShow import Ui_MainQWidget
@@ -377,6 +377,7 @@ def parse_lastshows_file():
 ################################################################################
 if __name__ == "__main__":
     APP = QtGui.QApplication(sys.argv)
+    signal.signal(signal.SIGINT, signal.SIG_DFL)
     parse_lastshows_file()
     KEPSHOW = KEpShow()
     read_dirs_from_xml()
