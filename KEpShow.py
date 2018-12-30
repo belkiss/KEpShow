@@ -18,6 +18,21 @@ TODAY = datetime.datetime.now().strftime("%d/%m/%Y")
 
 SHOW_SEEN_TO = {}
 
+SKIPPED_EXTENSIONS = {"zip", "srt", "ass", "nfo"}
+
+################################################################################
+################################################################################
+def clean_name(filename):
+    cleaned_name = filename.replace("720p", "", 1).lower()
+    cleaned_name = cleaned_name.replace("1080p", "", 1)
+    cleaned_name = cleaned_name.replace("x264", "", 1)
+    cleaned_name = cleaned_name.replace("h264", "", 1)
+    cleaned_name = cleaned_name.replace("h.264", "", 1)
+    cleaned_name = cleaned_name.replace("dd5.1", "", 1)
+    cleaned_name = re.sub("[\._\(]20\d{2}[\._\)]", "", cleaned_name, 1)
+        
+    return cleaned_name
+
 ################################################################################
 ################################################################################
 def parse_page(view, page, dirpath):
@@ -26,22 +41,29 @@ def parse_page(view, page, dirpath):
     url  = "http://epguides.com/"
     url += str(page)
     request = urllib.request.Request(url)
-    request.add_header('Cookie', 'ListDisplay=tvrage.com')
+    request.add_header('Cookie', 'ListDisplay=tvmaze.com')
     webpage = urllib.request.urlopen(request).readlines()
     found_first = 0
     model = QtGui.QStandardItemModel(0, 3)
 
     found = 0
     dir_content = []
+    originalcase_dir_content = []
     for files in os.listdir(dirpath):
         if os.path.isfile(dirpath + "/" + files):
-            dir_content.append(files.lower())
+            clean = clean_name(files)
+            if (not clean.endswith("zip")) & (not clean.endswith("srt")) & (not clean.endswith("ass")) & (not clean.endswith("nfo")):
+                dir_content.append(clean)
+                originalcase_dir_content.append(files)
         else:
             for child_files in os.listdir(dirpath + "/" + files):
                 if os.path.isfile(
                     os.path.join(str(dirpath + "/" + files), child_files)
                 ):
-                    dir_content.append(child_files)
+                    clean = clean_name(child_files)
+                    if (not clean.endswith("zip")) & (not clean.endswith("srt")) & (not clean.endswith("ass")) & (not clean.endswith("nfo")):
+                        dir_content.append(clean)
+                        originalcase_dir_content.append(child_files)
 
     for line in webpage:
         line = line.decode("ISO-8859-1") # 'UTF-8'
@@ -50,77 +72,73 @@ def parse_page(view, page, dirpath):
                 found_first += 1
         else:
             split_line = re.search(
-                "\d*\s*(\d*)[-](\d*).{15}\s*(\d*)[/]([a-zA-Z]*)[/](\d*)",line)
+                "^\d*\.\s*(\d*)[-](\d*).{15}\s*(\d*)[/ ]([a-zA-Z]*)[/ ](\d*)",line)
             if split_line:
-                diffusion_date = time.strptime(
-                                        "%02d" % int(split_line.group(3))
-                                        + "/" +
-                                        split_line.group(4)
-                                        + "/" +
-                                        split_line.group(5),
-                                    "%d/%b/%y")
+                try:
+                    diffusion_date = time.strptime(
+                                            "%02d" % int(split_line.group(3))
+                                            + "/" +
+                                            split_line.group(4)
+                                            + "/" +
+                                            split_line.group(5),
+                                        "%d/%b/%y")
 
-                season_nb  = int(split_line.group(1))
-                episode_nb = int(split_line.group(2))
-                str_cat = "s" + "%02d" % season_nb + "e" + "%02d" % episode_nb
-                found = 0
-                filename = ""
+                    season_nb  = int(split_line.group(1))
+                    episode_nb = int(split_line.group(2))
+                    str_cat = "s" + "%02d" % season_nb + "e" + "%02d" % episode_nb
+                    found = 0
+                    filename = ""
 
-                lowpage = str(page).lower()
+                    lowpage = str(page).lower()
 
-                if lowpage in SHOW_SEEN_TO:
-                    split_ep = re.search("(\d*)[e](\d*)",
-                                  SHOW_SEEN_TO[str(lowpage)])
-                    if split_ep:
-                        if season_nb < int(split_ep.group(1)):
-                            found = 2
-                        elif season_nb == int(split_ep.group(1)):
-                            if episode_nb <= int(split_ep.group(2)):
+                    if lowpage in SHOW_SEEN_TO:
+                        split_ep = re.search("(\d*)[e](\d*)",
+                                    SHOW_SEEN_TO[str(lowpage)])
+                        if split_ep:
+                            if season_nb < int(split_ep.group(1)):
                                 found = 2
+                            elif season_nb == int(split_ep.group(1)):
+                                if episode_nb <= int(split_ep.group(2)):
+                                    found = 2
 
-                # replace 720p by a space to avoid
-                # detecting it as an episode number
-                for mkv in dir_content:
-                    if mkv.lower().find("zip") == -1 & mkv.lower().find("srt") == -1 & mkv.lower().find("ass") == -1 & mkv.lower().find("nfo") == -1:
-                        if mkv.replace("720p", "", 1).lower().find(str_cat) != -1:
-                            dir_content.remove(mkv)
-                            filename = mkv
+                    # replace 720p by a space to avoid
+                    # detecting it as an episode number
+                    for index,mkv in enumerate(dir_content):
+                        if mkv.find(str_cat) != -1:
+                            filename = originalcase_dir_content[index]
                             found = 1
-                        elif mkv.replace("720p", "", 1).lower().find(
+                        elif mkv.find(
                                 str(season_nb) + str("%02d" % episode_nb)) != -1:
-                            dir_content.remove(mkv)
-                            filename = mkv
+                            filename = originalcase_dir_content[index]
                             found = 1
-                        elif mkv.replace("720p", "", 1).lower().find(
+                        elif mkv.find(
                                 str(season_nb) + "x" + str("%02d" % episode_nb)
                                 ) != -1:
-                            dir_content.remove(mkv)
-                            filename = mkv
+                            filename = originalcase_dir_content[index]
                             found = 1
-                    #else:
-                        #print "Found zip,srt,ass or nfo files"
 
-                diffusion_date = datetime.datetime(*diffusion_date[0:7]).strftime("%d/%m/%Y")
+                    diffusion_date = datetime.datetime(*diffusion_date[0:7]).strftime("%d/%m/%Y")
 
-                check = datetime.datetime.strptime(diffusion_date,"%d/%m/%Y") - datetime.datetime.strptime(TODAY,"%d/%m/%Y")
+                    check = datetime.datetime.strptime(diffusion_date,"%d/%m/%Y") - datetime.datetime.strptime(TODAY,"%d/%m/%Y")
 
-                color = "#86FF68"
-                # not aired yet
-                if check.days > 0:
-                    color = "#8BB2FF"
-                # today date
-                elif check.days == 0:
-                    color = "#FFF55C"
-                add_root_node(model, "", found)
-                add_child_node(model, 0, str_cat)
-                add_child_node(model, 1, diffusion_date, color)
-                if len(filename)>0:
-                    rar_extension = re.search("r(\d*)$", filename)
-                    if rar_extension:
-                        add_child_node(model, 2, "RAR FILES " + filename)
-                    else:
-                        add_child_node(model, 2, filename)#color)
-
+                    color = "#86FF68"
+                    # not aired yet
+                    if check.days > 0:
+                        color = "#8BB2FF"
+                    # today date
+                    elif check.days == 0:
+                        color = "#FFF55C"
+                    add_root_node(model, "", found)
+                    add_child_node(model, 0, str_cat)
+                    add_child_node(model, 1, diffusion_date, color)
+                    if len(filename)>0:
+                        rar_extension = re.search("r(\d*)$", filename)
+                        if rar_extension:
+                            add_child_node(model, 2, "RAR FILES " + filename)
+                        else:
+                            add_child_node(model, 2, filename)#color)
+                except:
+                    print("Something went wrong in " + line);
     model.sort(0)
     view.setModel(model)
 
