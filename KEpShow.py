@@ -4,7 +4,7 @@
 # pyuic4 -o ui_KEpShow.py KEpShow.ui
 # File : KEpShow.py
 import datetime, locale, os, re, signal, sys, time, urllib.request, urllib.error, urllib.parse, warnings
-from PyQt4 import QtCore, QtGui
+from PyQt5 import QtCore, QtGui, QtWidgets
 
 from ui_KEpShow import Ui_MainQWidget
 
@@ -149,7 +149,7 @@ def parse_page(view, page, dirpath):
 def get_squared_pics_from_tvshow( in_show_name ):
     """ Get squared thumbnails for tv show name """
     if QtCore.QFile.exists(".thumbs/" + in_show_name):
-        image = QtGui.QImage()
+        image = QtWidgets.QImage()
         image.load(in_show_name)
         return image
     else:
@@ -169,7 +169,7 @@ def get_squared_pics_from_tvshow( in_show_name ):
                                     "mediaicons.org/Services/GetIcon", 1)
                     print(icon_url)
                     pic = urllib.request.urlopen(str(icon_url)).read()
-                    imag = QtGui.QImage()
+                    imag = QtWidgets.QImage()
                     imag.loadFromData(pic)
                     print("success ?")
                     print(imag.save(".thumbs/" + in_show_name, "PNG"))
@@ -199,7 +199,7 @@ def get_squared_pics_list( in_show_name ):
                 #print icon_url
                 icons_urls.append(icon_url)
                 #pic = urllib2.urlopen(str(icon_url)).read()
-                #imag = QtGui.QImage()
+                #imag = QtWidgets.QImage()
                 #imag.loadFromData(pic)
                 #print "success ?"
                 #print imag.save(".thumbs/" + in_show_name, "PNG")
@@ -242,13 +242,13 @@ def write_dirs_to_xml():
 
 ################################################################################
 ################################################################################
-class PicturesSelector(QtGui.QDialog):
+class PicturesSelector(QtWidgets.QDialog):
     """ Thumbnails selection popup """
     def __init__(self, parent, in_show_name):
-        QtGui.QDialog.__init__(self, parent)
+        QtWidgets.QDialog.__init__(self, parent)
         self.setWindowTitle(in_show_name + " thumb Selector")
         #self.setLayout(QGridLayout(self))
-        self.setLayout(QtGui.QVBoxLayout(self))
+        self.setLayout(QtWidgets.QVBoxLayout(self))
         self.resize(250, 50)
 
         icons_urls = get_squared_pics_list(in_show_name)
@@ -257,16 +257,16 @@ class PicturesSelector(QtGui.QDialog):
             for url in icons_urls :
                 print(url)
                 pic = urllib.request.urlopen(str(url)).read()
-                imag = QtGui.QImage()
+                imag = QtWidgets.QImage()
                 imag.loadFromData(pic)
-                pixm = QtGui.QPixmap.fromImage(
+                pixm = QtWidgets.QPixmap.fromImage(
                             imag.scaled(128, 128, QtCore.Qt.KeepAspectRatio)
                         )
-                lbl = QtGui.QLabel()
+                lbl = QtWidgets.QLabel()
                 lbl.setPixmap(pixm)
                 self.layout().addWidget(lbl)
         else :
-            self.layout().addWidget(QtGui.QLabel("No pictures found"))
+            self.layout().addWidget(QtWidgets.QLabel("No pictures found"))
 
         self.show()
     #def leaveEvent(self, event):
@@ -276,7 +276,7 @@ class PicturesSelector(QtGui.QDialog):
 
 ################################################################################
 ################################################################################
-class KEpShow(QtGui.QWidget):
+class KEpShow(QtWidgets.QWidget):
     """ Main class """
     def on_show_activated(self, in_index):
         """ Load found tv show episodes infos """
@@ -287,7 +287,7 @@ class KEpShow(QtGui.QWidget):
         parse_page(self.ui.tableView, current_disp, current_dir)
         #image = get_squared_pics_from_tvshow(current_disp)
         #if image:
-            #self.ui.found_tv_shows.model().setData(self.ui.found_tv_shows.model().index(in_index.row(), 3), QtGui.QPixmap.fromImage(image.scaled(64, 64, QtCore.Qt.KeepAspectRatio)), QtCore.Qt.DecorationRole)
+            #self.ui.found_tv_shows.model().setData(self.ui.found_tv_shows.model().index(in_index.row(), 3), QtWidgets.QPixmap.fromImage(image.scaled(64, 64, QtCore.Qt.KeepAspectRatio)), QtCore.Qt.DecorationRole)
 
         #print(self.ui.found_tv_shows.model().data(index_showname))
 
@@ -308,7 +308,7 @@ class KEpShow(QtGui.QWidget):
         #print self.ui.found_tv_shows.model().data(index_showname).toString()
 
     def __init__(self, parent=None):
-        QtGui.QWidget.__init__(self, parent)
+        QtWidgets.QWidget.__init__(self, parent)
 
         # Set up the user interface from Designer.
         self.ui = Ui_MainQWidget()
@@ -316,20 +316,18 @@ class KEpShow(QtGui.QWidget):
 
         self.ui.tableView.setAlternatingRowColors(True)
 
-        self.connect(self.ui.found_tv_shows,
-                     QtCore.SIGNAL("activated(QModelIndex)"),
-                     self.on_show_activated)
+        self.ui.found_tv_shows.activated[QtCore.QModelIndex].connect(self.on_show_activated)
 
         #self.connect(self.ui.found_tv_shows, QtCore.SIGNAL("entered(QModelIndex)"), self.icon_selection)
         #self.connect(self.ui.all_tv_shows, QtCore.SIGNAL("currentIndexChanged(int)"), self.update_global)
 
     def directory_selector(self):
         """ Opens a popup to choose a directory containing tv shows """
-        dir_full_path = QtGui.QFileDialog.getExistingDirectory(self,
+        dir_full_path = QtWidgets.QFileDialog.getExistingDirectory(self,
                                     self.tr("Choose a directory"),
                                     QtCore.QDir.currentPath(),
-                                    QtGui.QFileDialog.DontResolveSymlinks |
-                                    QtGui.QFileDialog.ShowDirsOnly
+                                    QtWidgets.QFileDialog.DontResolveSymlinks |
+                                    QtWidgets.QFileDialog.ShowDirsOnly
                             )
         if not dir_full_path.isEmpty():
             DIRECTORIES_TO_PARSE.append(dir_full_path)
@@ -395,7 +393,7 @@ def parse_lastshows_file():
 ################################################################################
 ################################################################################
 if __name__ == "__main__":
-    APP = QtGui.QApplication(sys.argv)
+    APP = QtWidgets.QApplication(sys.argv)
     signal.signal(signal.SIGINT, signal.SIG_DFL)
     parse_lastshows_file()
     KEPSHOW = KEpShow()

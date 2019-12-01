@@ -31,7 +31,7 @@
         <enum>QLayout::SetMaximumSize</enum>
        </property>
        <item row="0" column="0">
-        <widget class="QLabel" name="label_2">
+        <widget class="QLabel" name="all_tv_show_label">
          <property name="text">
           <string>All shows</string>
          </property>
@@ -44,7 +44,7 @@
         <widget class="QComboBox" name="all_tv_shows"/>
        </item>
        <item row="1" column="0">
-        <widget class="QLabel" name="label_3">
+        <widget class="QLabel" name="found_tv_shows_label">
          <property name="text">
           <string>Found shows</string>
          </property>
@@ -76,18 +76,6 @@
          <attribute name="verticalHeaderVisible">
           <bool>false</bool>
          </attribute>
-         <attribute name="verticalHeaderVisible">
-          <bool>false</bool>
-         </attribute>
-         <attribute name="horizontalHeaderStretchLastSection">
-          <bool>true</bool>
-         </attribute>
-         <attribute name="horizontalHeaderVisible">
-          <bool>false</bool>
-         </attribute>
-         <attribute name="horizontalHeaderMinimumSectionSize">
-          <number>40</number>
-         </attribute>
         </widget>
        </item>
        <item row="2" column="0">
@@ -111,15 +99,6 @@
           <bool>true</bool>
          </attribute>
          <attribute name="verticalHeaderVisible">
-          <bool>false</bool>
-         </attribute>
-         <attribute name="verticalHeaderVisible">
-          <bool>false</bool>
-         </attribute>
-         <attribute name="horizontalHeaderStretchLastSection">
-          <bool>true</bool>
-         </attribute>
-         <attribute name="horizontalHeaderVisible">
           <bool>false</bool>
          </attribute>
         </widget>
