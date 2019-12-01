@@ -25,12 +25,13 @@ SKIPPED_EXTENSIONS = {"zip", "srt", "ass", "nfo"}
 def clean_name(filename):
     cleaned_name = filename.replace("720p", "", 1).lower()
     cleaned_name = cleaned_name.replace("1080p", "", 1)
+    cleaned_name = cleaned_name.replace("1080", "", 1)
     cleaned_name = cleaned_name.replace("x264", "", 1)
     cleaned_name = cleaned_name.replace("h264", "", 1)
     cleaned_name = cleaned_name.replace("h.264", "", 1)
     cleaned_name = cleaned_name.replace("dd5.1", "", 1)
     cleaned_name = re.sub("[\._\(]20\d{2}[\._\)]", "", cleaned_name, 1)
-        
+
     return cleaned_name
 
 ################################################################################
