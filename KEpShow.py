@@ -69,7 +69,7 @@ def parse_page(view, page, dirpath):
     for line in webpage:
         line = line.decode("ISO-8859-1") # 'UTF-8'
         if found_first == 0:
-            if line[0:17] == '<div id="eplist">':
+            if line.lstrip().startswith('<div id="eplist"'):
                 found_first += 1
         else:
             split_line = re.search(
