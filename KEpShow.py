@@ -3,7 +3,7 @@
 """ tool to help keeping updated with diffusion date of TV Shows """
 # pyuic4 -o ui_KEpShow.py KEpShow.ui
 # File : KEpShow.py
-import datetime, locale, os, re, signal, sys, time, urllib.request, urllib.error, urllib.parse, warnings
+import datetime, locale, os, re, csv, signal, sys, html, time, urllib.request, urllib.error, urllib.parse, warnings
 from PyQt5 import QtCore, QtGui, QtWidgets
 
 from ui_KEpShow import Ui_MainQWidget
@@ -29,14 +29,16 @@ def clean_name(filename):
     cleaned_name = cleaned_name.replace("x264", "", 1)
     cleaned_name = cleaned_name.replace("h264", "", 1)
     cleaned_name = cleaned_name.replace("h.264", "", 1)
+    cleaned_name = cleaned_name.replace("hdtv", "", 1)
     cleaned_name = cleaned_name.replace("dd5.1", "", 1)
+    cleaned_name = cleaned_name.replace("french", "", 1)
     cleaned_name = re.sub("[\._\(]20\d{2}[\._\)]", "", cleaned_name, 1)
 
     return cleaned_name
 
 ################################################################################
 ################################################################################
-def parse_page(view, page, dirpath):
+def parse_epguides_page(view, page, dirpath):
     """ Parse epguides webpage """
     locale.setlocale(locale.LC_ALL, 'C')
     url  = "http://epguides.com/"
@@ -140,6 +142,164 @@ def parse_page(view, page, dirpath):
                             add_child_node(model, 2, filename)#color)
                 except:
                     print("Something went wrong in " + line);
+    model.sort(0)
+    view.setModel(model)
+
+################################################################################
+################################################################################
+def parse_tvmaze_page(view, page, dirpath):
+    """ Parse epguides webpage """
+    locale.setlocale(locale.LC_ALL, 'C')
+
+    found_first = 0
+    model = QtGui.QStandardItemModel(0, 3)
+
+    found = 0
+    dir_content = []
+    originalcase_dir_content = []
+    ignored_extensions = [".zip", ".srt", ".ass", ".nfo"]
+    valid_extensions = [".mkv"]
+    for files in os.listdir(dirpath):
+        if os.path.isfile(dirpath + "/" + files):
+            clean = clean_name(files)
+            filename, extension = os.path.splitext(clean)
+            if (extension in valid_extensions or not extension in ignored_extensions):
+                dir_content.append(clean)
+                originalcase_dir_content.append(files)
+        else:
+            for child_files in os.listdir(dirpath + "/" + files):
+                if os.path.isfile(os.path.join(str(dirpath + "/" + files), child_files)):
+                    clean = clean_name(child_files)
+                    filename, extension = os.path.splitext(clean)
+                    if (extension in valid_extensions or not extension in ignored_extensions):
+                        dir_content.append(clean)
+                        originalcase_dir_content.append(child_files)
+
+    lowpage = str(page).lower()
+
+    last_seen_season = 0
+    last_seen_episode = 0
+    if lowpage in SHOW_SEEN_TO:
+        split_ep = re.search("(\d*)[e](\d*)", SHOW_SEEN_TO[str(lowpage)])
+        if split_ep:
+            last_seen_season = int(split_ep.group(1))
+            last_seen_episode = int(split_ep.group(2))
+
+    season_nb = "?"
+    episode_nb = "?"
+
+    if page in TVMAZE_ID:
+        url  = "http://epguides.com/common/exportToCSVmaze.asp?maze="
+        url += str(TVMAZE_ID[page])
+        request = urllib.request.Request(url)
+        webpage = urllib.request.urlopen(request).readlines()
+
+        for line in webpage:
+            line = line.decode("UTF-8")
+            line = html.unescape(line)
+            if found_first == 0:
+                if line.lstrip().startswith('number,season,episode,airdate,title,tvmaze link'):
+                    found_first += 1
+            elif line.lstrip().startswith('</pre>'):
+                break
+            else:
+                try:
+                    # page downloaded from epguides
+                    # current format:
+                    # number,season,episode,airdate,title,tvmaze link
+                    expected_nb_of_fields = 6
+                    csv_reader = csv.reader([line], delimiter=',')
+                    for csv_line in csv_reader:
+                        nb_fields = len(csv_line)
+                        if nb_fields != expected_nb_of_fields:
+                            if nb_fields > 0:
+                                print("Error! line {} we just received has {} fields instead of expected {}".format(csv_line, nb_fields, expected_nb_of_fields))
+                            continue
+                        season_nb = int(csv_line[1])
+                        episode_nb = int(csv_line[2])
+                        diffusion_date_string = csv_line[3]
+                        episode_title = csv_line[4]
+
+                        str_cat = "s" + "%02d" % season_nb + "e" + "%02d" % episode_nb
+
+                        diffusion_date = time.strptime(diffusion_date_string, "%d %b %y")
+
+                        found = 0
+                        filename = ""
+
+                        if season_nb < int(last_seen_season):
+                            found = 2
+                        elif season_nb == int(last_seen_season):
+                            if episode_nb <= int(last_seen_episode):
+                                found = 2
+
+                        # replace 720p by a space to avoid
+                        # detecting it as an episode number
+                        for index,mkv in enumerate(dir_content):
+                            if mkv.find(str_cat) != -1:
+                                filename = originalcase_dir_content[index]
+                                found = 1
+                            elif mkv.find(
+                                    str(season_nb) + str("%02d" % episode_nb)) != -1:
+                                filename = originalcase_dir_content[index]
+                                found = 1
+                            elif mkv.find(
+                                    str(season_nb) + "x" + str("%02d" % episode_nb)
+                                    ) != -1:
+                                filename = originalcase_dir_content[index]
+                                found = 1
+
+                        diffusion_date = datetime.datetime(*diffusion_date[0:7]).strftime("%d/%m/%Y")
+
+                        check = datetime.datetime.strptime(diffusion_date,"%d/%m/%Y") - datetime.datetime.strptime(TODAY,"%d/%m/%Y")
+
+                        color = "#86FF68"
+                        # not aired yet
+                        if check.days > 0:
+                            color = "#8BB2FF"
+                        # today date
+                        elif check.days == 0:
+                            color = "#FFF55C"
+                        add_root_node(model, "", found)
+                        add_child_node(model, 0, str_cat)
+                        add_child_node(model, 1, diffusion_date, color)
+                        if len(filename)>0:
+                            rar_extension = re.search("r(\d*)$", filename)
+                            if rar_extension:
+                                add_child_node(model, 2, "RAR FILES " + filename)
+                            else:
+                                add_child_node(model, 2, filename)#color)
+                        else:
+                            add_child_node(model, 2, episode_title)
+                except:
+                    print("Something went wrong in " + line);
+    else:
+        # replace 720p by a space to avoid
+        # detecting it as an episode number
+        for index,clean_filename in enumerate(dir_content):
+            season_episode_regex = re.search("[sS]?(\d{1,2})[eE]?(\d{1,2})", clean_filename);
+            if season_episode_regex:
+                season_nb = int(season_episode_regex.group(1))
+                episode_nb = int(season_episode_regex.group(2))
+
+            color = "#86FF68"
+
+            found = 1
+            if season_nb < int(last_seen_season):
+                found = 2
+            elif season_nb == int(last_seen_season):
+                if episode_nb <= int(last_seen_episode):
+                    found = 2
+
+            filename = originalcase_dir_content[index]
+
+            str_cat = "s" + "%02d" % season_nb + "e" + "%02d" % episode_nb
+
+            add_root_node(model, "", found)
+            add_child_node(model, 0, str_cat)
+            add_child_node(model, 1, "", color)
+            add_child_node(model, 2, filename)
+
     model.sort(0)
     view.setModel(model)
 
@@ -284,7 +444,7 @@ class KEpShow(QtWidgets.QWidget):
         current_disp   = self.ui.found_tv_shows.model().data(index_showname)
         ix_dir         = self.ui.found_tv_shows.model().index(in_index.row(), 2)
         current_dir    = self.ui.found_tv_shows.model().data(ix_dir)
-        parse_page(self.ui.tableView, current_disp, current_dir)
+        parse_tvmaze_page(self.ui.tableView, current_disp, current_dir)
         #image = get_squared_pics_from_tvshow(current_disp)
         #if image:
             #self.ui.found_tv_shows.model().setData(self.ui.found_tv_shows.model().index(in_index.row(), 3), QtWidgets.QPixmap.fromImage(image.scaled(64, 64, QtCore.Qt.KeepAspectRatio)), QtCore.Qt.DecorationRole)
@@ -304,7 +464,7 @@ class KEpShow(QtWidgets.QWidget):
         """ Load all tv show episodes infos """
         index_showname = self.ui.all_tv_shows.model().index(rank, 1)
         current_disp = self.ui.all_tv_shows.model().data(index_showname).toString()
-        parse_page(self.ui.tableView, current_disp, "")
+        parse_epguides_page(self.ui.tableView, current_disp, "")
         #print self.ui.found_tv_shows.model().data(index_showname).toString()
 
     def __init__(self, parent=None):
@@ -389,6 +549,59 @@ def parse_lastshows_file():
                 SHOW_SEEN_TO[tmp_show_name.lower()] = split_line.group(1) + "e" + split_line.group(2)
     file_data.close()
 
+################################################################################
+################################################################################
+def parse_current_shtml():
+    """ Parse the current.shtml file that contains an (old) offline html file of shows """
+    path = "current.shtml"
+    with open(path, 'r', -1, 'ISO-8859-1') as ALL_SHOW_FILE_DATA:
+        FOUND_DATA_BEGINNING = 0
+        for element in ALL_SHOW_FILE_DATA:
+            if FOUND_DATA_BEGINNING == 0:
+                if element[0:18] == '<strong><a name="A':
+                    FOUND_DATA_BEGINNING += 1
+            else:
+                if element[0:16] == '<li><b><a href="':
+                    print(element)
+                    found_rank = element.find('">', 16)
+                    full_url   = element[16:found_rank]
+                    dir_name   = full_url[full_url.find('.com/')+5:-1]
+                    show_name  = element[found_rank+2:element.find('</a>',
+                                        found_rank+2)]
+                    DIR_NAMES[dir_name] = show_name
+                    SHOWNAME_LOWER_TO_UPPER[dir_name.lower()] = dir_name
+                    add_root_node(ALL_SHOWS_MODEL, show_name, 4)
+                    add_child_node(ALL_SHOWS_MODEL, 0, show_name)
+                    add_child_node(ALL_SHOWS_MODEL, 1, dir_name)
+                    #KEPSHOW.ui.all_tv_shows.addItem(show_name, dir_name)
+                    #print show_name+ ":"+ dir_name
+
+################################################################################
+################################################################################
+def parse_all_shows():
+    """ Parse the current.shtml file that contains an offline csv file of shows """
+    # downloaded from epguides
+    # current format:
+    # title,directory,tvrage,TVmaze,start date,end date,number of episodes,run time,network,country
+    expected_nb_of_fields = 10
+    path = "allshows.txt"
+    with open(path, encoding='ISO-8859-1') as csv_file:
+        csv_reader = csv.reader(csv_file, delimiter=',')
+        for line in csv_reader:
+            nb_fields = len(line)
+            if nb_fields != expected_nb_of_fields:
+                if nb_fields > 0:
+                    print("Error! line {} in file {} has {} fields instead of expected {}".format(csv_reader.line_num, path, nb_fields, expected_nb_of_fields))
+                continue
+            show_name = line[0]
+            dir_name = line[1]
+            tvmaze_id = line[3]
+            TVMAZE_ID[dir_name] = tvmaze_id
+            DIR_NAMES[dir_name] = show_name
+            SHOWNAME_LOWER_TO_UPPER[dir_name.lower()] = dir_name
+            #add_root_node(ALL_SHOWS_MODEL, show_name, 4)
+            #add_child_node(ALL_SHOWS_MODEL, 0, show_name)
+            #add_child_node(ALL_SHOWS_MODEL, 1, dir_name)
 
 ################################################################################
 ################################################################################
@@ -399,36 +612,16 @@ if __name__ == "__main__":
     KEPSHOW = KEpShow()
     read_dirs_from_xml()
     #KEPSHOW.directory_selector()
-    #KEPSHOW.read_dirs_from_xml()
 
-    ALL_SHOW_FILE_DATA = open("current.shtml", 'r', -1, 'ISO-8859-1')
-    FOUND_DATA_BEGINNING = 0
     DIR_NAMES = {}
+    TVMAZE_ID = {}
     SHOWNAME_LOWER_TO_UPPER = {}
 
     ALL_SHOWS_MODEL = QtGui.QStandardItemModel(0, 2)
-
-    for element in ALL_SHOW_FILE_DATA:
-        if FOUND_DATA_BEGINNING == 0:
-            if element[0:18] == '<strong><a name="A':
-                FOUND_DATA_BEGINNING += 1
-        else:
-            if element[0:16] == '<li><b><a href="':
-                found_rank = element.find('">', 16)
-                full_url   = element[16:found_rank]
-                dir_name   = full_url[full_url.find('.com/')+5:-1]
-                show_name  = element[found_rank+2:element.find('</a>',
-                                     found_rank+2)]
-                DIR_NAMES[dir_name] = show_name
-                SHOWNAME_LOWER_TO_UPPER[dir_name.lower()] = dir_name
-                add_root_node(ALL_SHOWS_MODEL, show_name, 4)
-                add_child_node(ALL_SHOWS_MODEL, 0, show_name)
-                add_child_node(ALL_SHOWS_MODEL, 1, dir_name)
-                #KEPSHOW.ui.all_tv_shows.addItem(show_name, dir_name)
-                #print show_name+ ":"+ dir_name
-    ALL_SHOWS_MODEL.sort(0)
-    KEPSHOW.ui.all_tv_shows.setModel(ALL_SHOWS_MODEL)
-
+    #parse_current_shtml()
+    parse_all_shows()
+    #ALL_SHOWS_MODEL.sort(0)
+    #KEPSHOW.ui.all_tv_shows.setModel(ALL_SHOWS_MODEL)
 
     TMP_DIRS = []
     FOUND_SHOWS_MODEL = QtGui.QStandardItemModel(0, 4)
@@ -436,10 +629,12 @@ if __name__ == "__main__":
         directory = str(directory)
         print("parsing " + directory)
         for element in os.listdir(directory):
-            if os.path.isdir(os.path.join(directory, element)):
+            element_full_path = os.path.join(directory, element)
+            if os.path.isdir(element_full_path):
                 # AIROUT ONAIR TOWATCH
-                for child_element in os.listdir(os.path.join(directory, element)):
-                    if os.path.isdir(os.path.join(os.path.join(directory, element), child_element)):
+                for child_element in os.listdir(element_full_path):
+                    child_full_path = os.path.join(element_full_path, child_element)
+                    if os.path.isdir(child_full_path):
                         element_color = 3
                         if element == "OnAir":
                             element_color = 3
@@ -449,7 +644,7 @@ if __name__ == "__main__":
                             element_color = 0
                         if child_element.lower() in SHOWNAME_LOWER_TO_UPPER:
                             if SHOWNAME_LOWER_TO_UPPER[child_element.lower()] != child_element :
-                                print("    rename this " + child_element + " to this : " + SHOWNAME_LOWER_TO_UPPER[child_element.lower()])
+                                print("    rename this " + child_full_path + " to this : " + os.path.join(element_full_path, SHOWNAME_LOWER_TO_UPPER[child_element.lower()]))
                             #print("child_element.lower() " + child_element.lower())
                             #print("SHOWNAME_LOWER_TO_UPPER[child_element.lower()] " + SHOWNAME_LOWER_TO_UPPER[child_element.lower()])
                             #print("DIR_NAMES[SHOWNAME_LOWER_TO_UPPER[child_element.lower()]] " + DIR_NAMES[SHOWNAME_LOWER_TO_UPPER[child_element.lower()]])
@@ -461,9 +656,9 @@ if __name__ == "__main__":
                                 # CHANGE THE BEHAVIOUR : when already inside, complete the data
                             else:
                                 TMP_DIRS.append(child_element)
-                            add_child_node(FOUND_SHOWS_MODEL, 2, os.path.join(os.path.join(directory, element), child_element))
+                            add_child_node(FOUND_SHOWS_MODEL, 2, child_full_path)
                         else:
-                            print("    ####### not found : " + child_element)
+                            print("    ####### not found : " + child_full_path)
                             add_root_node(FOUND_SHOWS_MODEL, child_element, element_color)
                             add_child_node(FOUND_SHOWS_MODEL, 0, child_element)
                             add_child_node(FOUND_SHOWS_MODEL, 1, child_element)
@@ -472,7 +667,7 @@ if __name__ == "__main__":
                                 # CHANGE THE BEHAVIOUR : when already inside, complete the data
                             else:
                                 TMP_DIRS.append(child_element)
-                            add_child_node(FOUND_SHOWS_MODEL, 2, os.path.join(os.path.join(directory, element), child_element))
+                            add_child_node(FOUND_SHOWS_MODEL, 2, child_full_path)
     FOUND_SHOWS_MODEL.sort(0)
 
     KEPSHOW.ui.found_tv_shows.setModel(FOUND_SHOWS_MODEL)
