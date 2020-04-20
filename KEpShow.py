@@ -14,7 +14,7 @@ warnings.simplefilter('default')
 XML_FILENAME = "KEpShow_dirs.xml"
 DIRECTORIES_TO_PARSE = []
 
-TODAY = datetime.datetime.now().strftime("%d/%m/%Y")
+TODAY = datetime.datetime.now().strftime("%Y%m%d")
 
 SHOW_SEEN_TO = {}
 
@@ -122,7 +122,7 @@ def parse_epguides_page(view, page, dirpath):
 
                     diffusion_date = datetime.datetime(*diffusion_date[0:7]).strftime("%d/%m/%Y")
 
-                    check = datetime.datetime.strptime(diffusion_date,"%d/%m/%Y") - datetime.datetime.strptime(TODAY,"%d/%m/%Y")
+                    check = datetime.datetime.strptime(diffusion_date,"%d/%m/%Y") - datetime.datetime.strptime(TODAY,"%Y%m%d")
 
                     color = "#86FF68"
                     # not aired yet
@@ -212,9 +212,11 @@ def parse_tvmaze_page(view, page, dirpath):
                     for csv_line in csv_reader:
                         nb_fields = len(csv_line)
                         if nb_fields != expected_nb_of_fields:
+                            if nb_fields == 0:
+                                continue
                             if nb_fields > 0:
-                                print("Error! line {} we just received has {} fields instead of expected {}".format(csv_line, nb_fields, expected_nb_of_fields))
-                            continue
+                                print("Warning! line {} we just received has {} fields instead of expected {}".format(csv_line, nb_fields, expected_nb_of_fields))
+
                         season_nb = int(csv_line[1])
                         episode_nb = int(csv_line[2])
                         diffusion_date_string = csv_line[3]
@@ -251,7 +253,7 @@ def parse_tvmaze_page(view, page, dirpath):
 
                         diffusion_date = datetime.datetime(*diffusion_date[0:7]).strftime("%d/%m/%Y")
 
-                        check = datetime.datetime.strptime(diffusion_date,"%d/%m/%Y") - datetime.datetime.strptime(TODAY,"%d/%m/%Y")
+                        check = datetime.datetime.strptime(diffusion_date,"%d/%m/%Y") - datetime.datetime.strptime(TODAY,"%Y%m%d")
 
                         color = "#86FF68"
                         # not aired yet
@@ -578,20 +580,19 @@ def parse_current_shtml():
 
 ################################################################################
 ################################################################################
-def parse_all_shows():
+def parse_all_shows(filename):
     """ Parse the current.shtml file that contains an offline csv file of shows """
     # downloaded from epguides
     # current format:
-    # title,directory,tvrage,TVmaze,start date,end date,number of episodes,run time,network,country
-    expected_nb_of_fields = 10
-    path = "allshows.txt"
-    with open(path, encoding='ISO-8859-1') as csv_file:
+    # title,directory,tvrage,TVmaze,start date,end date,number of episodes,run time,network,country,onhiatus,onhiatusdesc
+    expected_nb_of_fields = 12
+    with open(filename, encoding='ISO-8859-1') as csv_file:
         csv_reader = csv.reader(csv_file, delimiter=',')
         for line in csv_reader:
             nb_fields = len(line)
             if nb_fields != expected_nb_of_fields:
                 if nb_fields > 0:
-                    print("Error! line {} in file {} has {} fields instead of expected {}".format(csv_reader.line_num, path, nb_fields, expected_nb_of_fields))
+                    print("Error! line {} in file {} has {} fields instead of expected {}".format(csv_reader.line_num, filename, nb_fields, expected_nb_of_fields))
                 continue
             show_name = line[0]
             dir_name = line[1]
@@ -613,13 +614,22 @@ if __name__ == "__main__":
     read_dirs_from_xml()
     #KEPSHOW.directory_selector()
 
+    allshows_filename = "allshows_" + TODAY + ".txt"
+    if not os.path.exists(allshows_filename):
+        url  = "http://epguides.com/common/allshows.txt"
+        print("Downloading new version of allshows.txt from epguides")
+        urllib.request.urlretrieve(url, allshows_filename)
+        if not os.path.exists(allshows_filename):
+            print("Warning! Download failed, use the offline version")
+            allshows_filename = "allshows.txt"
+
     DIR_NAMES = {}
     TVMAZE_ID = {}
     SHOWNAME_LOWER_TO_UPPER = {}
 
     ALL_SHOWS_MODEL = QtGui.QStandardItemModel(0, 2)
     #parse_current_shtml()
-    parse_all_shows()
+    parse_all_shows(allshows_filename)
     #ALL_SHOWS_MODEL.sort(0)
     #KEPSHOW.ui.all_tv_shows.setModel(ALL_SHOWS_MODEL)
 
