@@ -204,7 +204,7 @@ def parse_tvmaze_page(view, page, dirpath):
             elif line.lstrip().startswith('</pre>'):
                 break
             else:
-                #try:
+                try:
                     # page downloaded from epguides
                     # current format:
                     # number,season,episode,airdate,title,tvmaze link
@@ -279,8 +279,8 @@ def parse_tvmaze_page(view, page, dirpath):
                                 add_child_node(model, 2, filename)#color)
                         else:
                             add_child_node(model, 2, episode_title)
-                #except:
-                    #print("Something went wrong when parsing line '" + line + "'");
+                except:
+                    print("Something went wrong when parsing line '" + line + "'");
     else:
         # replace 720p by a space to avoid
         # detecting it as an episode number
@@ -671,27 +671,32 @@ if __name__ == "__main__":
                             add_root_node(FOUND_SHOWS_MODEL, DIR_NAMES[SHOWNAME_LOWER_TO_UPPER[name_lowered]], element_color)
                             add_child_node(FOUND_SHOWS_MODEL, 0, DIR_NAMES[SHOWNAME_LOWER_TO_UPPER[name_lowered]])
                             add_child_node(FOUND_SHOWS_MODEL, 1, SHOWNAME_LOWER_TO_UPPER[name_lowered])
-                            if child_element in TMP_DIRS:
+                            if name_lowered in TMP_DIRS:
                                 print("    " + child_element + " already inside")
                                 # CHANGE THE BEHAVIOUR : when already inside, complete the data
                             else:
-                                TMP_DIRS.append(child_element)
+                                TMP_DIRS.append(name_lowered)
                             add_child_node(FOUND_SHOWS_MODEL, 2, child_full_path)
                         else:
                             print("    ####### not found : " + child_full_path)
                             add_root_node(FOUND_SHOWS_MODEL, child_element, element_color)
                             add_child_node(FOUND_SHOWS_MODEL, 0, child_element)
                             add_child_node(FOUND_SHOWS_MODEL, 1, child_element)
-                            if child_element in TMP_DIRS:
+                            if name_lowered in TMP_DIRS:
                                 print("    " + child_element + " already inside")
                                 # CHANGE THE BEHAVIOUR : when already inside, complete the data
                             else:
-                                TMP_DIRS.append(child_element)
+                                TMP_DIRS.append(name_lowered)
                             add_child_node(FOUND_SHOWS_MODEL, 2, child_full_path)
 
     # add shows we don't have on disk
     for previous_show in RUNNING_SHOWS:
         name_lowered = previous_show.lower()
+
+        # skip if it was found
+        if name_lowered in TMP_DIRS:
+            continue
+
         if name_lowered in SHOWNAME_LOWER_TO_UPPER:
             add_root_node(FOUND_SHOWS_MODEL, previous_show, 2)
             add_child_node(FOUND_SHOWS_MODEL, 0, DIR_NAMES[SHOWNAME_LOWER_TO_UPPER[name_lowered]])
