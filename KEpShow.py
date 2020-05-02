@@ -701,7 +701,7 @@ if __name__ == "__main__":
             add_root_node(FOUND_SHOWS_MODEL, previous_show, 2)
             add_child_node(FOUND_SHOWS_MODEL, 0, DIR_NAMES[SHOWNAME_LOWER_TO_UPPER[name_lowered]])
             add_child_node(FOUND_SHOWS_MODEL, 1, SHOWNAME_LOWER_TO_UPPER[name_lowered])
-            add_child_node(FOUND_SHOWS_MODEL, 2, "")
+            add_child_node(FOUND_SHOWS_MODEL, 2, SHOWNAME_LOWER_TO_UPPER[name_lowered])
         else:
             add_root_node(FOUND_SHOWS_MODEL, previous_show, 0)
             add_child_node(FOUND_SHOWS_MODEL, 0, previous_show)
