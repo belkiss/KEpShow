@@ -17,8 +17,9 @@ DIRECTORIES_TO_PARSE = []
 TODAY = datetime.datetime.now().strftime("%Y%m%d")
 
 SHOW_SEEN_TO = {}
+RUNNING_SHOWS = []
 
-SKIPPED_EXTENSIONS = {"zip", "srt", "ass", "nfo"}
+SKIPPED_EXTENSIONS = [".zip", ".srt", ".ass", ".nfo"]
 
 ################################################################################
 ################################################################################
@@ -157,23 +158,23 @@ def parse_tvmaze_page(view, page, dirpath):
     found = 0
     dir_content = []
     originalcase_dir_content = []
-    ignored_extensions = [".zip", ".srt", ".ass", ".nfo"]
     valid_extensions = [".mkv"]
-    for files in os.listdir(dirpath):
-        if os.path.isfile(dirpath + "/" + files):
-            clean = clean_name(files)
-            filename, extension = os.path.splitext(clean)
-            if (extension in valid_extensions or not extension in ignored_extensions):
-                dir_content.append(clean)
-                originalcase_dir_content.append(files)
-        else:
-            for child_files in os.listdir(dirpath + "/" + files):
-                if os.path.isfile(os.path.join(str(dirpath + "/" + files), child_files)):
-                    clean = clean_name(child_files)
-                    filename, extension = os.path.splitext(clean)
-                    if (extension in valid_extensions or not extension in ignored_extensions):
-                        dir_content.append(clean)
-                        originalcase_dir_content.append(child_files)
+    if len(dirpath) > 0 and os.path.exists(dirpath):
+        for files in os.listdir(dirpath):
+            if os.path.isfile(dirpath + "/" + files):
+                clean = clean_name(files)
+                filename, extension = os.path.splitext(clean)
+                if (extension in valid_extensions or not extension in SKIPPED_EXTENSIONS):
+                    dir_content.append(clean)
+                    originalcase_dir_content.append(files)
+            else:
+                for child_files in os.listdir(dirpath + "/" + files):
+                    if os.path.isfile(os.path.join(str(dirpath + "/" + files), child_files)):
+                        clean = clean_name(child_files)
+                        filename, extension = os.path.splitext(clean)
+                        if (extension in valid_extensions or not extension in SKIPPED_EXTENSIONS):
+                            dir_content.append(clean)
+                            originalcase_dir_content.append(child_files)
 
     lowpage = str(page).lower()
 
@@ -203,7 +204,7 @@ def parse_tvmaze_page(view, page, dirpath):
             elif line.lstrip().startswith('</pre>'):
                 break
             else:
-                try:
+                #try:
                     # page downloaded from epguides
                     # current format:
                     # number,season,episode,airdate,title,tvmaze link
@@ -223,8 +224,6 @@ def parse_tvmaze_page(view, page, dirpath):
                         episode_title = csv_line[4]
 
                         str_cat = "s" + "%02d" % season_nb + "e" + "%02d" % episode_nb
-
-                        diffusion_date = time.strptime(diffusion_date_string, "%d %b %y")
 
                         found = 0
                         filename = ""
@@ -251,20 +250,27 @@ def parse_tvmaze_page(view, page, dirpath):
                                 filename = originalcase_dir_content[index]
                                 found = 1
 
-                        diffusion_date = datetime.datetime(*diffusion_date[0:7]).strftime("%d/%m/%Y")
-
-                        check = datetime.datetime.strptime(diffusion_date,"%d/%m/%Y") - datetime.datetime.strptime(TODAY,"%Y%m%d")
-
                         color = "#86FF68"
-                        # not aired yet
-                        if check.days > 0:
-                            color = "#8BB2FF"
-                        # today date
-                        elif check.days == 0:
-                            color = "#FFF55C"
+
+                        if len(diffusion_date_string.strip()) > 0:
+                            diffusion_date = time.strptime(diffusion_date_string, "%d %b %y")
+                            diffusion_date = datetime.datetime(*diffusion_date[0:7]).strftime("%d/%m/%Y")
+
+                            check = datetime.datetime.strptime(diffusion_date,"%d/%m/%Y") - datetime.datetime.strptime(TODAY,"%Y%m%d")
+
+                            # not aired yet
+                            if check.days > 0:
+                                color = "#8BB2FF"
+                            # today date
+                            elif check.days == 0:
+                                color = "#FFF55C"
+                        else:
+                            diffusion_date = "Unknown"
+
                         add_root_node(model, "", found)
                         add_child_node(model, 0, str_cat)
                         add_child_node(model, 1, diffusion_date, color)
+
                         if len(filename)>0:
                             rar_extension = re.search("r(\d*)$", filename)
                             if rar_extension:
@@ -273,8 +279,8 @@ def parse_tvmaze_page(view, page, dirpath):
                                 add_child_node(model, 2, filename)#color)
                         else:
                             add_child_node(model, 2, episode_title)
-                except:
-                    print("Something went wrong in " + line);
+                #except:
+                    #print("Something went wrong when parsing line '" + line + "'");
     else:
         # replace 720p by a space to avoid
         # detecting it as an episode number
@@ -545,10 +551,13 @@ def parse_lastshows_file():
         if tmp_show_name.find('###############') != -1:
             stop = True
         if stop == False:
-            split_line = re.search(".*[s](\d*)[e](\d*).*(\d*)[/](\d*)[/](\d*)",
+            split_line = re.search(".*s(\d+)e(\d+).*\d+/\d+/\d+\s*;?\s*(.*)$",
                                    line)
             if split_line:
                 SHOW_SEEN_TO[tmp_show_name.lower()] = split_line.group(1) + "e" + split_line.group(2)
+                if split_line.group(3) not in ["CANCELLED", "FINISHED", "DROPPED"]:
+                    RUNNING_SHOWS.append(tmp_show_name)
+
     file_data.close()
 
 ################################################################################
@@ -581,7 +590,7 @@ def parse_current_shtml():
 ################################################################################
 ################################################################################
 def parse_all_shows(filename):
-    """ Parse the current.shtml file that contains an offline csv file of shows """
+    """ Parse the file that contains an offline csv file of shows """
     # downloaded from epguides
     # current format:
     # title,directory,tvrage,TVmaze,start date,end date,number of episodes,run time,network,country,onhiatus,onhiatusdesc
@@ -594,7 +603,7 @@ def parse_all_shows(filename):
                 if nb_fields > 0:
                     print("Error! line {} in file {} has {} fields instead of expected {}".format(csv_reader.line_num, filename, nb_fields, expected_nb_of_fields))
                 continue
-            show_name = line[0]
+            show_name = html.unescape(line[0])
             dir_name = line[1]
             tvmaze_id = line[3]
             TVMAZE_ID[dir_name] = tvmaze_id
@@ -652,15 +661,16 @@ if __name__ == "__main__":
                             element_color = 1
                         else:
                             element_color = 0
-                        if child_element.lower() in SHOWNAME_LOWER_TO_UPPER:
-                            if SHOWNAME_LOWER_TO_UPPER[child_element.lower()] != child_element :
-                                print("    rename this " + child_full_path + " to this : " + os.path.join(element_full_path, SHOWNAME_LOWER_TO_UPPER[child_element.lower()]))
-                            #print("child_element.lower() " + child_element.lower())
-                            #print("SHOWNAME_LOWER_TO_UPPER[child_element.lower()] " + SHOWNAME_LOWER_TO_UPPER[child_element.lower()])
-                            #print("DIR_NAMES[SHOWNAME_LOWER_TO_UPPER[child_element.lower()]] " + DIR_NAMES[SHOWNAME_LOWER_TO_UPPER[child_element.lower()]])
-                            add_root_node(FOUND_SHOWS_MODEL, DIR_NAMES[SHOWNAME_LOWER_TO_UPPER[child_element.lower()]], element_color)
-                            add_child_node(FOUND_SHOWS_MODEL, 0, DIR_NAMES[SHOWNAME_LOWER_TO_UPPER[child_element.lower()]])
-                            add_child_node(FOUND_SHOWS_MODEL, 1, SHOWNAME_LOWER_TO_UPPER[child_element.lower()])
+                        name_lowered = child_element.lower()
+                        if name_lowered in SHOWNAME_LOWER_TO_UPPER:
+                            if SHOWNAME_LOWER_TO_UPPER[name_lowered] != child_element :
+                                print("    rename this " + child_full_path + " to this : " + os.path.join(element_full_path, SHOWNAME_LOWER_TO_UPPER[name_lowered]))
+                            #print("name_lowered " + name_lowered)
+                            #print("SHOWNAME_LOWER_TO_UPPER[name_lowered] " + SHOWNAME_LOWER_TO_UPPER[name_lowered])
+                            #print("DIR_NAMES[SHOWNAME_LOWER_TO_UPPER[name_lowered]] " + DIR_NAMES[SHOWNAME_LOWER_TO_UPPER[name_lowered]])
+                            add_root_node(FOUND_SHOWS_MODEL, DIR_NAMES[SHOWNAME_LOWER_TO_UPPER[name_lowered]], element_color)
+                            add_child_node(FOUND_SHOWS_MODEL, 0, DIR_NAMES[SHOWNAME_LOWER_TO_UPPER[name_lowered]])
+                            add_child_node(FOUND_SHOWS_MODEL, 1, SHOWNAME_LOWER_TO_UPPER[name_lowered])
                             if child_element in TMP_DIRS:
                                 print("    " + child_element + " already inside")
                                 # CHANGE THE BEHAVIOUR : when already inside, complete the data
@@ -678,6 +688,21 @@ if __name__ == "__main__":
                             else:
                                 TMP_DIRS.append(child_element)
                             add_child_node(FOUND_SHOWS_MODEL, 2, child_full_path)
+
+    # add shows we don't have on disk
+    for previous_show in RUNNING_SHOWS:
+        name_lowered = previous_show.lower()
+        if name_lowered in SHOWNAME_LOWER_TO_UPPER:
+            add_root_node(FOUND_SHOWS_MODEL, previous_show, 2)
+            add_child_node(FOUND_SHOWS_MODEL, 0, DIR_NAMES[SHOWNAME_LOWER_TO_UPPER[name_lowered]])
+            add_child_node(FOUND_SHOWS_MODEL, 1, SHOWNAME_LOWER_TO_UPPER[name_lowered])
+            add_child_node(FOUND_SHOWS_MODEL, 2, "")
+        else:
+            add_root_node(FOUND_SHOWS_MODEL, previous_show, 0)
+            add_child_node(FOUND_SHOWS_MODEL, 0, previous_show)
+            add_child_node(FOUND_SHOWS_MODEL, 1, previous_show)
+            add_child_node(FOUND_SHOWS_MODEL, 2, "Not on epguides")
+
     FOUND_SHOWS_MODEL.sort(0)
 
     KEPSHOW.ui.found_tv_shows.setModel(FOUND_SHOWS_MODEL)
