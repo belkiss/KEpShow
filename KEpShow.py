@@ -542,8 +542,8 @@ def add_child_node(model, in_index, name, in_color_code = ""):
 ################################################################################
 def parse_lastshows_file():
     """ Read last shows file for already seen episodes """
-    path = "/home/belkiss/download/Series"
-    full_path = os.path.join(path, "lastShows")
+    path = "/media/sda4/home/belkiss/download/CloudSyncDocs/Series"
+    full_path = os.path.join(path, "lastShows.txt")
     file_data = open(full_path, 'r')
     stop = False
     for line in file_data:
