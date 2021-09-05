@@ -186,8 +186,8 @@ def parse_tvmaze_page(view, page, dirpath):
             last_seen_season = int(split_ep.group(1))
             last_seen_episode = int(split_ep.group(2))
 
-    season_nb = "?"
-    episode_nb = "?"
+    season_nb = 0
+    episode_nb = 0
 
     if page in TVMAZE_ID:
         url  = "http://epguides.com/common/exportToCSVmaze.asp?maze="
